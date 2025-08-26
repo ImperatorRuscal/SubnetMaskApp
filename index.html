@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subnetmask.info — Single-File Clone</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121831;
+      --muted: #9fb0ff;
+      --text: #e6ebff;
+      --accent: #6aa1ff;
+      --warn: #ffb86a;
+      --error: #ff6a6a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, Arial, sans-serif; color: var(--text);
+      background: radial-gradient(1200px 800px at 20% -10%, #1a2550, var(--bg));
+    }
+    header { padding: 24px; text-align: center; }
+    h1 { margin: 0 0 6px; font-weight: 700; letter-spacing: .3px; }
+    header p { margin: 0; color: var(--muted); }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 16px 24px 80px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h2 { margin-top: 0; font-size: 18px; }
+    .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+    label { font-size: 13px; color: var(--muted); min-width: 140px; }
+    input, select {
+      flex: 1; min-width: 180px; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.14); background: rgba(7,10,25,.6); color: var(--text);
+    }
+    input::placeholder { color: #9fb0ff88; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      border: 1px solid rgba(255,255,255,0.14); background: rgba(50,90,255,.18); color: var(--text);
+      padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600;
+    }
+    button.secondary { background: transparent; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; vertical-align: middle; }
+    tbody tr:nth-child(odd) td { background: rgba(255,255,255,0.03); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .error { color: var(--error); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); }
+
+    .copyBtn {
+      margin-left: 8px; padding: 4px 8px; font-size: 12px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06);
+    }
+    .copyBtn[disabled] { opacity: .6; cursor: default; }
+    .valWrap { display: inline-flex; align-items: center; gap: 6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Subnetmask.info — Single-File Clone</h1>
+    <p>All client-side. IPv4 &amp; IPv6. Calculator · Mask converter · Reverse lookup · Copy to clipboard.</p>
+  </header>
+  <div class="wrap">
+    <div class="grid">
+      <!-- Calculator -->
+      <section class="card" id="calcCard">
+        <h2>Subnet Calculator</h2>
+        <div class="row">
+          <label for="ip">IP Address</label>
+          <input id="ip" placeholder="IPv4: 192.168.1.10  ·  IPv6: 2001:db8::1" />
+        </div>
+        <div class="row">
+          <label for="mask">Mask / Prefix</label>
+          <input id="mask" placeholder="IPv4: 255.255.255.0 or /24  ·  IPv6: /64" />
+        </div>
+        <div class="actions">
+          <button id="btnCalc">Calculate</button>
+          <button class="secondary" id="btnDemo">Demo</button>
+        </div>
+        <div id="calcError" class="error" style="display:none; margin-top:8px;"></div>
+        <table id="calcResults" style="display:none;">
+          <tbody>
+            <tr><th>IP Address</th><td class="mono" id="res-ip"></td></tr>
+            <tr><th>Mask / Prefix</th><td class="mono" id="res-mask"></td></tr>
+            <tr><th>CIDR</th><td class="mono" id="res-cidr"></td></tr>
+            <tr><th>Network</th><td class="mono" id="res-network"></td></tr>
+            <tr><th>Broadcast (IPv4)</th><td class="mono" id="res-broadcast"></td></tr>
+            <tr><th>First Address</th><td class="mono" id="res-first"></td></tr>
+            <tr><th>Last Address</th><td class="mono" id="res-last"></td></tr>
+            <tr><th>Total Addresses</th><td class="mono" id="res-total"></td></tr>
+            <tr><th>Usable Hosts (IPv4)</th><td class="mono" id="res-hosts"></td></tr>
+          </tbody>
+        </table>
+        <div class="muted" style="margin-top:8px;">
+          IPv4: /31 treats both addresses as usable (RFC 3021); /32 is a single host. IPv6 has no broadcast; first/last show the subnet bounds. Masks are validated for contiguity where applicable.
+        </div>
+      </section>
+
+      <!-- Mask Converter -->
+      <section class="card">
+        <h2>Subnet Mask Converter</h2>
+        <div class="row">
+          <label for="convInput">Input</label>
+          <input id="convInput" placeholder="IPv4: 255.255.255.0 or /24 · IPv6: /64" />
+        </div>
+        <div class="actions">
+          <button id="btnConvert">Convert</button>
+          <button class="secondary" id="btnConvExamples">Examples</button>
+        </div>
+        <div id="convError" class="error" style="display:none; margin-top:8px;"></div>
+        <table id="convResults" style="display:none;">
+          <tbody>
+            <tr><th>Dotted-Decimal (IPv4)</th><td class="mono" id="conv-mask"></td></tr>
+            <tr><th>CIDR</th><td class="mono" id="conv-cidr"></td></tr>
+            <tr><th>Wildcard (IPv4)</th><td class="mono" id="conv-wc"></td></tr>
+            <tr><th>Notes</th><td class="mono" id="conv-notes"></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Reverse Lookup -->
+      <section class="card">
+        <h2>Reverse Lookup (Hosts ➜ Smallest Subnet)</h2>
+        <div class="row">
+          <label for="hostCount">Required hosts</label>
+          <input id="hostCount" type="number" min="1" step="1" placeholder="e.g., 50 or 1e6" />
+        </div>
+        <div class="row">
+          <label for="hostMode">Family & Mode</label>
+          <select id="hostMode">
+            <option value="ipv4-usable" selected>IPv4 — usable hosts</option>
+            <option value="ipv4-total">IPv4 — total addresses</option>
+            <option value="ipv6-total">IPv6 — total addresses</option>
+          </select>
+        </div>
+        <div class="actions"><button id="btnReverse">Find Subnet</button></div>
+        <div id="revError" class="error" style="display:none; margin-top:8px;"></div>
+        <table id="revResults" style="display:none;">
+          <tbody>
+            <tr><th>Recommended CIDR</th><td class="mono" id="rev-cidr"></td></tr>
+            <tr><th>Subnet Mask</th><td class="mono" id="rev-mask"></td></tr>
+            <tr><th>Total Addresses</th><td class="mono" id="rev-total"></td></tr>
+            <tr><th>Usable Hosts</th><td class="mono" id="rev-usable"></td></tr>
+          </tbody>
+        </table>
+        <div class="muted" style="margin-top:8px;">
+          Tips: IPv4 → 1 ➜ /32, 2 ➜ /31; IPv6 → pick a prefix so 2^(128−p) ≥ needed.
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ===== Utilities (IPv4 & IPv6) =====
+    const v4Regex = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+    const looksIPv6 = s => s.includes(':');
+
+    // --- IPv4 helpers ---
+    function v4ToInt(ip) { return ip.split('.').reduce((acc, o) => (acc << 8) + Number(o), 0) >>> 0; }
+    function intToV4(int) { return [24,16,8,0].map(s => (int >>> s) & 255).join('.'); }
+
+    function isContiguousMask(maskInt) {
+      if (maskInt === 0) return false;
+      const inv = (~maskInt) >>> 0;
+      return ((inv + 1) & inv) === 0;
+    }
+    function v4CidrToMask(cidr) {
+      if (cidr < 0 || cidr > 32) throw new Error('CIDR must be 0..32');
+      const bits = cidr === 0 ? 0 : (~0 << (32 - cidr)) >>> 0;
+      return intToV4(bits);
+    }
+    function v4MaskToCidr(mask) {
+      const m = v4ToInt(mask);
+      if (!isContiguousMask(m)) throw new Error('Mask is not contiguous');
+      let c = 0, x = m;
+      while (x & (1 << 31)) { c++; x = (x << 1) >>> 0; }
+      return c;
+    }
+    function v4Wildcard(mask) { return intToV4((~v4ToInt(mask)) >>> 0); }
+
+    function v4Total(cidr) { return 2 ** (32 - cidr); }
+    function v4Usable(cidr) {
+      if (cidr === 32) return 1;
+      if (cidr === 31) return 2;
+      return Math.max(0, v4Total(cidr) - 2);
+    }
+
+    // --- IPv6 helpers (BigInt) ---
+    function parseIPv6(ip) {
+      if (!ip || !ip.includes(':')) throw new Error('Invalid IPv6');
+      let head = ip, tail = '';
+      if (ip.includes('::')) {
+        const parts = ip.split('::');
+        if (parts.length > 2) throw new Error('Invalid IPv6 ::');
+        head = parts[0]; tail = parts[1];
+      }
+      const headH = head ? head.split(':').filter(Boolean) : [];
+      const tailH = tail ? tail.split(':').filter(Boolean) : [];
+      if (headH.some(h=>h.length>4) || tailH.some(h=>h.length>4)) throw new Error('IPv6 hextet too long');
+      const missing = 8 - (headH.length + tailH.length);
+      if (missing < 0) throw new Error('Too many hextets');
+      const full = [...headH, ...Array(missing).fill('0'), ...tailH].map(h=>h||'0');
+      if (full.length !== 8) throw new Error('IPv6 length error');
+      const big = full.reduce((acc,h)=> (acc << 16n) + BigInt('0x'+h), 0n);
+      return { big, hextets: full };
+    }
+    function bigToIPv6(b) {
+      const parts = [];
+      for (let i=7;i>=0;i--) {
+        const seg = Number((b >> BigInt(i*16)) & 0xffffn).toString(16);
+        parts.push(seg);
+      }
+      return compressIPv6(parts);
+    }
+    function compressIPv6(parts) {
+      let bestStart=-1, bestLen=0, curStart=-1, curLen=0;
+      parts.forEach((p,i)=>{
+        if (p==='0') { if (curStart===-1){curStart=i;curLen=1;} else curLen++; }
+        else { if (curLen>bestLen){bestLen=curLen;bestStart=curStart;} curStart=-1; curLen=0; }
+      });
+      if (curLen>bestLen){bestLen=curLen;bestStart=curStart;}
+      if (bestLen>1) {
+        const left = parts.slice(0,bestStart).join(':');
+        const right = parts.slice(bestStart+bestLen).join(':');
+        return (left?left:'') + '::' + (right?right:'');
+      }
+      return parts.join(':');
+    }
+
+    function ipv6Total(cidr) { const bits = 128 - cidr; return { pow2: bits, exact: bits<=32 ? (2 ** bits) : null }; }
+
+    // ===== Parsers for Mask/Prefix =====
+    function parseMaskInput(maskStr, family) {
+      const s = maskStr.trim();
+      if (!s) throw new Error('Missing mask/prefix');
+      if (s.startsWith('/')) {
+        const cidr = Number(s.slice(1));
+        if (!Number.isInteger(cidr)) throw new Error('Invalid CIDR');
+        if (family === 'v6') { if (cidr<0||cidr>128) throw new Error('IPv6 CIDR must be 0..128'); return { cidr, mask: '/' + cidr }; }
+        else { if (cidr<0||cidr>32) throw new Error('IPv4 CIDR must be 0..32'); return { cidr, mask: v4CidrToMask(cidr) }; }
+      }
+      if (family === 'v6') throw new Error('IPv6 uses prefix length only (e.g., /64)');
+      if (!v4Regex.test(s)) throw new Error('Invalid dotted-decimal mask');
+      const cidr = v4MaskToCidr(s);
+      return { cidr, mask: s };
+    }
+
+    // ===== Calculator =====
+    function setText(id, v) { const td = document.getElementById(id); if (!td) return; if (td.dataset.hasCopy) { td.querySelector('.valWrap span.mono').textContent = v; } else { td.textContent = v; } }
+    function show(id) { document.getElementById(id).style.display = ''; }
+    function hide(id) { document.getElementById(id).style.display = 'none'; }
+    function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = ''; }
+
+    function enableCopies(tableId) {
+      const table = document.getElementById(tableId);
+      if (!table) return;
+      const tds = table.querySelectorAll('td.mono');
+      tds.forEach(td => {
+        if (td.dataset.hasCopy) return;
+        const val = td.textContent;
+        const span = document.createElement('span'); span.className = 'valWrap';
+        const code = document.createElement('span'); code.className = 'mono'; code.textContent = val;
+        const btn = document.createElement('button'); btn.className = 'copyBtn'; btn.textContent = 'Copy';
+        btn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(code.textContent);
+            const old = btn.textContent; btn.textContent = 'Copied!'; btn.disabled = true;
+            setTimeout(()=>{ btn.textContent = old; btn.disabled = false; }, 1200);
+          } catch {}
+        });
+        td.textContent = ''; span.appendChild(code); span.appendChild(btn); td.appendChild(span); td.dataset.hasCopy = '1';
+      });
+    }
+
+    function calculate() {
+      hide('calcError'); hide('calcResults');
+      const ipStr = document.getElementById('ip').value.trim();
+      const maskStr = document.getElementById('mask').value.trim();
+      if (!ipStr) return showError('calcError', 'Enter an IP address.');
+      const isV6 = looksIPv6(ipStr);
+
+      try {
+        if (isV6) {
+          const { big } = parseIPv6(ipStr);
+          const { cidr } = parseMaskInput(maskStr, 'v6');
+          const hostBits = 128 - cidr;
+          const maskBig = (hostBits===128) ? 0n : (~0n << BigInt(hostBits)) & ((1n<<128n)-1n);
+          const net = big & maskBig;
+          const hostMask = ((1n << BigInt(hostBits)) - 1n);
+          const last = net | hostMask;
+          const totalInfo = ipv6Total(cidr);
+
+          setText('res-ip', ipStr);
+          setText('res-mask', '/' + cidr);
+          setText('res-cidr', '/' + cidr);
+          setText('res-network', bigToIPv6(net));
+          setText('res-broadcast', '—');
+          setText('res-first', bigToIPv6(net));
+          setText('res-last', bigToIPv6(last));
+          setText('res-total', totalInfo.exact!==null ? totalInfo.exact.toLocaleString() : `2^${totalInfo.pow2}`);
+          setText('res-hosts', '—');
+          show('calcResults'); enableCopies('calcResults');
+          return;
+        }
+
+        if (!v4Regex.test(ipStr)) return showError('calcError', 'Enter a valid IPv4 or IPv6 address.');
+        const { cidr, mask } = parseMaskInput(maskStr, 'v4');
+        const ip = v4ToInt(ipStr);
+        const m = v4ToInt(mask);
+        const net = (ip & m) >>> 0;
+        const bcast = (net | (~m >>> 0)) >>> 0;
+        const first = (cidr >= 31) ? net : (net + 1) >>> 0;
+        const last  = (cidr >= 31) ? bcast : (bcast - 1) >>> 0;
+        const total = v4Total(cidr);
+        const usable = v4Usable(cidr);
+
+        setText('res-ip', ipStr);
+        setText('res-mask', mask);
+        setText('res-cidr', '/' + cidr);
+        setText('res-network', intToV4(net));
+        setText('res-broadcast', intToV4(bcast));
+        setText('res-first', intToV4(first));
+        setText('res-last', intToV4(last));
+        setText('res-total', total.toLocaleString());
+        setText('res-hosts', usable.toLocaleString());
+        show('calcResults'); enableCopies('calcResults');
+      } catch (e) {
+        showError('calcError', e.message);
+      }
+    }
+
+    // ===== Converter =====
+    function convertMask() {
+      hide('convError'); hide('convResults');
+      const s = document.getElementById('convInput').value.trim();
+      if (!s) return showError('convError', 'Enter a CIDR (e.g., /24 or /64) or dotted mask (IPv4).');
+      try {
+        if (s.startsWith('/')) {
+          const cidr = Number(s.slice(1));
+          if (!Number.isInteger(cidr)) throw new Error('Invalid CIDR');
+          let notes = '';
+          if (cidr >= 0 && cidr <= 32) {
+            const mask = v4CidrToMask(cidr);
+            setText('conv-mask', mask);
+            setText('conv-wc', v4Wildcard(mask));
+            notes = 'IPv4';
+          } else if (cidr >= 0 && cidr <= 128) {
+            setText('conv-mask', '—');
+            setText('conv-wc', '—');
+            notes = 'IPv6 uses prefix length only; dotted masks/wildcards do not apply.';
+          } else throw new Error('CIDR out of range');
+          setText('conv-cidr', '/' + cidr);
+          setText('conv-notes', notes);
+          show('convResults'); enableCopies('convResults');
+          return;
+        }
+        if (!v4Regex.test(s)) throw new Error('Dotted masks apply to IPv4 only (e.g., 255.255.255.0).');
+        const cidr = v4MaskToCidr(s);
+        setText('conv-mask', s);
+        setText('conv-cidr', '/' + cidr);
+        setText('conv-wc', v4Wildcard(s));
+        setText('conv-notes', 'IPv4');
+        show('convResults'); enableCopies('convResults');
+      } catch (e) {
+        showError('convError', e.message);
+      }
+    }
+
+    // ===== Reverse Lookup =====
+    function pow2Ceil(n) { if (n<=1) return 1; n=n-1; n|=n>>1; n|=n>>2; n|=n>>4; n|=n>>8; n|=n>>16; return n+1; }
+    function reverseLookup() {
+      hide('revError'); hide('revResults');
+      let raw = document.getElementById('hostCount').value.trim();
+      if (!raw) return showError('revError', 'Enter a number.');
+      const n = Number(raw);
+      const mode = document.getElementById('hostMode').value;
+      if (!Number.isFinite(n) || n < 1) return showError('revError', 'Enter a whole number ≥ 1.');
+
+      try {
+        if (mode.startsWith('ipv6')) {
+          const needed = Math.ceil(n);
+          const exp = Math.ceil(Math.log2(needed));
+          const cidr = 128 - exp;
+          setText('rev-cidr', '/' + cidr);
+          setText('rev-mask', '(IPv6 prefix only)');
+          setText('rev-total', exp<=32 ? (2**exp).toLocaleString() : `2^${exp}`);
+          setText('rev-usable', '—');
+          show('revResults'); enableCopies('revResults');
+          return;
+        }
+
+        const needed = Math.ceil(n);
+        let cidr;
+        if (mode==='ipv4-total') {
+          const size = pow2Ceil(needed);
+          cidr = 32 - Math.log2(size);
+        } else {
+          if (needed === 1) cidr = 32; else if (needed === 2) cidr = 31; else {
+            const size = pow2Ceil(needed + 2);
+            cidr = 32 - Math.log2(size);
+          }
+        }
+        const mask = v4CidrToMask(cidr);
+        setText('rev-cidr', '/' + cidr);
+        setText('rev-mask', mask);
+        setText('rev-total', v4Total(cidr).toLocaleString());
+        setText('rev-usable', v4Usable(cidr).toLocaleString());
+        show('revResults'); enableCopies('revResults');
+      } catch (e) {
+        showError('revError', e.message);
+      }
+    }
+
+    // Wire up
+    document.getElementById('btnCalc').addEventListener('click', calculate);
+    document.getElementById('btnDemo').addEventListener('click', () => {
+      document.getElementById('ip').value = '2001:db8::1';
+      document.getElementById('mask').value = '/64';
+      calculate();
+    });
+    document.getElementById('btnConvert').addEventListener('click', convertMask);
+    document.getElementById('btnConvExamples').addEventListener('click', () => {
+      const ex = ['255.255.255.252', '/30', '255.255.255.0', '/24', '/31', '/32', '/64', '/48'];
+      const pick = ex[Math.floor(Math.random() * ex.length)];
+      document.getElementById('convInput').value = pick; convertMask();
+    });
+    document.getElementById('btnReverse').addEventListener('click', reverseLookup);
+
+    // Enter key support
+    ['ip','mask'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); }));
+    document.getElementById('convInput').addEventListener('keydown', e => { if (e.key === 'Enter') convertMask(); });
+    document.getElementById('hostCount').addEventListener('keydown', e => { if (e.key === 'Enter') reverseLookup(); });
+  </script>
+</body>
+</html>
